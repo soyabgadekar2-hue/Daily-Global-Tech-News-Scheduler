@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+.vscode/
+
+# Operating-system temporary files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Keep the safe configuration template in version control.
+!.env.example

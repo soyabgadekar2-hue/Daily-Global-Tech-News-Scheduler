@@ -1,0 +1,6 @@
+requests
+pymongo
+python-dotenv
+APScheduler
+fastapi
+uvicorn
