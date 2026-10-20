@@ -69,9 +69,40 @@ OK
 
 These tests replace the HTTP request with mocked responses. They do not use your API key or contact NewsAPI.org, so passing them is not a live API verification. No Step 4 command is provided for live fetching; this stage only validates the fetch service with safe mocked tests.
 
+## Step 5: Categorize and Save News
+
+`news_storage.py` categorizes each article by matching keywords in its title and description, validates the required title and URL, calculates a transparent importance score, and inserts valid articles into MongoDB's `news` collection. The categories are Artificial Intelligence, Agentic AI, Quantum Computing, Cloud Computing, Software Architecture, Cybersecurity, Programming and Developer Tools, Startups and Tech Business, and Global Tech Companies and Trends. When several keyword groups match, the first matching category in the list in `news_storage.py` is selected. Articles without a category keyword get `category: None`.
+
+The score is a simple indicator, not an objective measure of truth: categorized articles receive 40 relevance points (uncategorized articles receive 15), up to 30 points for headline signals, and up to 30 points for recency (within one day, seven days, or 30 days). Invalid or future publication dates earn no recency points. Each saved article also gets a UTC `fetched_at` timestamp. Invalid titles or URLs are rejected. URLs must use HTTP or HTTPS and include a host.
+
+MongoDB's existing unique index on `news.url` prevents storing the same URL twice. Duplicate URLs in a batch are skipped, and MongoDB duplicate-key errors are counted rather than raised. The function reports the numbers inserted, duplicated, and rejected; it does not delete or update existing records.
+
+Run the Step 5 tests from PowerShell with the existing virtual environment:
+
+```powershell
+.\.venv\Scripts\python.exe .\test_news_storage.py
+```
+
+Expected result:
+
+```text
+..........
+----------------------------------------------------------------------
+Ran 10 tests in ...s
+
+OK
+```
+
+The tests pass a mocked collection to the save function, so they do not write to MongoDB. To run the Step 4 and Step 5 tests together, use:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest .\test_news_service.py .\test_news_storage.py
+```
+
+The combined run should report 18 tests and `OK`.
+
 ## Future Stages
 
-1. Categorize news and store it in MongoDB.
-2. Generate daily briefings.
-3. Schedule the daily workflow.
-4. Expose REST APIs with FastAPI.
+1. Generate daily briefings.
+2. Schedule the daily workflow.
+3. Expose REST APIs with FastAPI.
