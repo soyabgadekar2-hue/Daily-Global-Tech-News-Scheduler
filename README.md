@@ -25,7 +25,7 @@ python -m pip install -r requirements.txt
 
 ## Environment Configuration
 
-The local `.env` file contains MongoDB, news provider, schedule, and fetch-limit settings. It is ignored by Git. Use `.env.example` as the safe template; add a news API key and base URL only after choosing a provider. `config.py` loads these values with beginner-friendly defaults.
+The local `.env` file contains MongoDB, news provider, schedule, and fetch-limit settings. It is ignored by Git. Use `.env.example` as the safe template, and keep your API key only in `.env`. `config.py` loads these values with beginner-friendly defaults.
 
 ## Step 3: MongoDB Connection
 
@@ -43,10 +43,35 @@ A successful test prints the ping status, database name, collections, and unique
 
 Step 2, environment and configuration, is complete. The virtual environment, dependency installation, and configuration defaults were verified successfully. Step 3, MongoDB connection and index setup, is complete; `python .\test_database.py` passed against the local MongoDB server.
 
+## Step 4: Fetch Technology News
+
+This step uses [NewsAPI.org](https://newsapi.org/docs) and its Everything endpoint. Copy `.env.example` to `.env` if needed, then set `NEWS_API_KEY` to the key from your NewsAPI account and `NEWS_API_BASE_URL` to `https://newsapi.org/v2`. Keep the key private; do not paste it into source code or share it in chat. `NEWS_FETCH_LIMIT` controls the result count and must be between 1 and 100.
+
+`news_service.py` sends a GET request to `/everything`, passes `technology` as the search term, and puts the key in the `X-Api-Key` request header. Requests time out after 10 seconds by default; callers can choose a different timeout. The function returns normalized article dictionaries and does not write to MongoDB.
+
+A REST API lets one program ask another for information using web requests. An HTTP request is the message sent to the service; an HTTP response is its reply. A JSON response is structured text that Python can turn into dictionaries and lists. An API key identifies the application making the request. HTTP status codes summarize the result: `200` means success, `401` commonly indicates an authentication problem, and `429` means the service is limiting requests. A timeout puts a limit on how long the program waits before reporting that the service did not respond in time.
+
+Run the mocked tests from PowerShell with the existing virtual environment:
+
+```powershell
+.\.venv\Scripts\python.exe .\test_news_service.py
+```
+
+Expected result:
+
+```text
+........
+----------------------------------------------------------------------
+Ran 8 tests in ...s
+
+OK
+```
+
+These tests replace the HTTP request with mocked responses. They do not use your API key or contact NewsAPI.org, so passing them is not a live API verification. No Step 4 command is provided for live fetching; this stage only validates the fetch service with safe mocked tests.
+
 ## Future Stages
 
-1. Choose a news provider and retrieve articles.
-2. Categorize news and store it in MongoDB.
-3. Generate daily briefings.
-4. Schedule the daily workflow.
-5. Expose REST APIs with FastAPI.
+1. Categorize news and store it in MongoDB.
+2. Generate daily briefings.
+3. Schedule the daily workflow.
+4. Expose REST APIs with FastAPI.
