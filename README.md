@@ -101,8 +101,39 @@ The tests pass a mocked collection to the save function, so they do not write to
 
 The combined run should report 18 tests and `OK`.
 
+## Step 6: Generate the Daily Briefing
+
+A daily briefing is a date-specific digest built from articles already stored in MongoDB. `briefing_service.py` sorts stored articles by importance score and publication date, then selects from categories in rounds so lower-ranked categories can be represented when the article limit allows. It groups the selected articles by category and includes title, URL, source, publication date, and a short extractive summary. When an article has no description, the briefing says the available description is limited instead of making up a summary.
+
+The "why it matters" text, Learning of the Day, and Career Opportunity are labeled generated suggestions rather than facts reported by articles or job listings. No paid AI service is used. If there are no stored articles, the briefing contains an empty news mapping and says that no suggestions could be generated.
+
+Briefings use a UTC date string (`YYYY-MM-DD`) and the existing unique index on `daily_briefings.briefing_date`. The first briefing for a date is preserved on reruns; it is not replaced. If two runs race to create the same date, the one that encounters a duplicate-key error loads the already-saved briefing. MongoDB `ObjectId` and datetime values are converted to strings in the returned result for JSON serialization, while MongoDB stores its native values.
+
+Run the Step 6 tests from PowerShell using the existing virtual environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest test_briefing_service
+```
+
+Expected output:
+
+```text
+......
+----------------------------------------------------------------------
+Ran 6 tests in ...s
+
+OK
+```
+
+Run all mocked API, storage, and briefing tests together:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest test_news_service test_news_storage test_briefing_service
+```
+
+The combined run should report 24 tests and `OK`. Tests use mocked collections and do not call NewsAPI or modify real database records.
+
 ## Future Stages
 
-1. Generate daily briefings.
-2. Schedule the daily workflow.
-3. Expose REST APIs with FastAPI.
+1. Schedule the daily workflow.
+2. Expose REST APIs with FastAPI.
