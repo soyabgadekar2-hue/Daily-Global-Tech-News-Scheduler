@@ -4,3 +4,4 @@ python-dotenv
 APScheduler
 fastapi
 uvicorn
+httpx2

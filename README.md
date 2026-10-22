@@ -184,6 +184,51 @@ Run all mocked tests for Steps 4–7:
 
 The combined run should report 32 tests and `OK`.
 
-## Future Stages
+## Step 8: FastAPI REST API
 
-1. Expose REST APIs with FastAPI.
+The API is read-only and uses the existing `database.connect_to_mongodb()` helper. Start it from the project root with the existing virtual environment:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn api:app --reload
+```
+
+Open Swagger UI at `http://127.0.0.1:8000/docs`. In Postman, send GET requests to the endpoints below (no request body is needed):
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Safely report application and MongoDB connection status |
+| `GET /news?skip=0&limit=20` | List news with pagination (`limit` is 1–100) |
+| `GET /news/{id}` | Get one article by MongoDB ObjectId |
+| `GET /news/category/{category}` | List news with an exact category label |
+| `GET /news/search?keyword=python` | Case-insensitive literal search in titles and descriptions |
+| `GET /briefings?skip=0&limit=20` | List briefings with pagination |
+| `GET /briefings/YYYY-MM-DD` | Get a briefing by its `YYYY-MM-DD` date |
+
+For example, request `http://127.0.0.1:8000/news/search?keyword=python` in Postman. A list response has `items`, `skip`, `limit`, and `total`. MongoDB ObjectIds and Python dates/datetimes are returned as strings so the response is valid JSON. Invalid pagination/search values are rejected with HTTP `422`; malformed IDs and dates return `400`; valid but missing records return `404`; unavailable database operations return a safe `503` response. Search terms are treated as literal text, not regular expressions.
+
+Run API tests with mocked database operations:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest test_api
+```
+
+Expected output:
+
+```text
+..........
+----------------------------------------------------------------------
+Ran 10 tests in ...s
+
+OK
+```
+
+Run the mocked tests from Steps 4–8 together:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest test_news_service test_news_storage test_briefing_service test_scheduler test_api
+```
+
+The combined run should report 42 tests and `OK`. These tests do not call the news provider or require live MongoDB. The API does not start or integrate the scheduler.
+
+The next step can integrate the scheduler with application startup safely.
