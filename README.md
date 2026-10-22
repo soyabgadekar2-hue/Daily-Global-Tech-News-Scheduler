@@ -133,7 +133,57 @@ Run all mocked API, storage, and briefing tests together:
 
 The combined run should report 24 tests and `OK`. Tests use mocked collections and do not call NewsAPI or modify real database records.
 
+## Step 7: Daily Scheduling
+
+APScheduler runs Python functions on a timer. A scheduled job is the function APScheduler runs; a cron-style schedule describes calendar times such as every day at a chosen hour and minute. A time zone tells the scheduler which local clock those numbers refer to, independently of the computer's configured time zone.
+
+The daily job runs `fetch_technology_news()`, then `save_articles(articles)`, and finally `generate_daily_briefing(briefing_date=...)` for the current date in the configured schedule time zone. The defaults are `NEWS_SCHEDULE_HOUR=6`, `NEWS_SCHEDULE_MINUTE=0`, and `NEWS_SCHEDULE_TIMEZONE=Asia/Kolkata` (Indian Standard Time). This is an explicit default, not an assumption about the server. Set the time-zone setting to another valid IANA name, such as `America/New_York`, if that is the intended schedule. Both the hour/minute and time-zone values are loaded from `.env` by `config.py`.
+
+Start the scheduler from the project root with the existing virtual environment:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python .\scheduler.py
+```
+
+The scheduler uses one `BlockingScheduler` job, permits only one running instance of that job, coalesces missed runs into at most one run, and allows a missed run to start up to one hour late. Importing `scheduler.py` does not start it. The scheduler runs only while this Python process and its computer/server remain running; it does not run while the computer is off or the process is stopped.
+
+To safely verify workflow order without waiting for the scheduled time, making a network request, or writing to MongoDB, run:
+
+```powershell
+python .\scheduler.py --test
+```
+
+Expected output includes:
+
+```text
+INFO scheduler: Scheduler test mode passed: fetch -> save -> briefing. No network request or database write was made.
+```
+
+Run the automated scheduler tests:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest test_scheduler
+```
+
+Expected result:
+
+```text
+........
+----------------------------------------------------------------------
+Ran 8 tests in ...s
+
+OK
+```
+
+Run all mocked tests for Steps 4–7:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest test_news_service test_news_storage test_briefing_service test_scheduler
+```
+
+The combined run should report 32 tests and `OK`.
+
 ## Future Stages
 
-1. Schedule the daily workflow.
-2. Expose REST APIs with FastAPI.
+1. Expose REST APIs with FastAPI.
