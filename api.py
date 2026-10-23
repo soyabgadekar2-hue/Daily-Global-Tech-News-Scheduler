@@ -1,22 +1,85 @@
 """Read-only REST API for stored technology news and daily briefings."""
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 import logging
 import re
 from datetime import date, datetime
+from pathlib import Path as FilePath
 
 from bson import ObjectId
 from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pymongo.errors import PyMongoError
 
-from database import connect_to_mongodb
+import config
+from database import connect_to_mongodb, prepare_collections
+from scheduler import create_api_scheduler
 
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
+    """Prepare MongoDB and run one daily scheduler for this application process."""
+    if (
+        getattr(application.state, "scheduler_starting", False)
+        or getattr(application.state, "scheduler", None) is not None
+    ):
+        logger.warning("Scheduler startup was requested more than once.")
+        raise RuntimeError("The application scheduler is already active.")
+
+    application.state.scheduler_starting = True
+    scheduler = None
+    try:
+        logger.info("Preparing MongoDB collections and indexes.")
+        prepare_collections()
+        scheduler = create_api_scheduler()
+        scheduler.start()
+        application.state.scheduler = scheduler
+    except Exception as error:
+        if scheduler is not None and scheduler.running:
+            try:
+                scheduler.shutdown(wait=False)
+            except Exception as shutdown_error:
+                logger.error(
+                    "Scheduler cleanup after startup failure failed (%s).",
+                    type(shutdown_error).__name__,
+                )
+        application.state.scheduler = None
+        application.state.scheduler_starting = False
+        logger.error("Application startup failed (%s).", type(error).__name__)
+        raise
+
+    application.state.scheduler_starting = False
+    logger.info(
+        "Daily news scheduler started for %02d:%02d (%s).",
+        config.NEWS_SCHEDULE_HOUR,
+        config.NEWS_SCHEDULE_MINUTE,
+        config.NEWS_SCHEDULE_TIMEZONE,
+    )
+    try:
+        yield
+    finally:
+        try:
+            if scheduler.running:
+                scheduler.shutdown(wait=False)
+            logger.info("Daily news scheduler stopped.")
+        except Exception as error:
+            logger.error("Scheduler shutdown failed (%s).", type(error).__name__)
+            raise
+        finally:
+            application.state.scheduler = None
+            application.state.scheduler_starting = False
+
+
 app = FastAPI(
     title="Daily Global Tech News API",
     description="Read stored technology news articles and daily briefings.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -186,3 +249,10 @@ def get_briefing(briefing_date: str):
     if briefing is None:
         raise HTTPException(status_code=404, detail="Briefing not found.")
     return _json_value(briefing)
+
+
+app.mount(
+    "/",
+    StaticFiles(directory=FilePath(__file__).resolve().parent / "frontend", html=True),
+    name="frontend",
+)

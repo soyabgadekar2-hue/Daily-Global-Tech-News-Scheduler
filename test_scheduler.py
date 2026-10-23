@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 from unittest.mock import Mock, patch
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 import scheduler
@@ -112,6 +113,35 @@ class SchedulerTests(unittest.TestCase):
         fields = {field.name: str(field) for field in job.trigger.fields}
         self.assertEqual(fields["hour"], "6")
         self.assertEqual(fields["minute"], "15")
+
+    def test_creates_async_api_job_with_same_schedule_settings(self):
+        with (
+            patch.object(scheduler.config, "NEWS_SCHEDULE_HOUR", 7),
+            patch.object(scheduler.config, "NEWS_SCHEDULE_MINUTE", 30),
+            patch.object(scheduler.config, "NEWS_SCHEDULE_TIMEZONE", "Asia/Kolkata"),
+        ):
+            instance = scheduler.create_api_scheduler()
+
+        self.assertIsInstance(instance, AsyncIOScheduler)
+        [job] = instance.get_jobs()
+        self.assertEqual(job.id, "daily_tech_news_workflow")
+        self.assertEqual(job.max_instances, 1)
+        self.assertTrue(job.coalesce)
+        self.assertEqual(job.misfire_grace_time, 3600)
+        self.assertEqual(job.trigger.timezone.key, "Asia/Kolkata")
+
+    def test_scheduled_workflow_logs_unexpected_errors_without_details(self):
+        with (
+            patch(
+                "scheduler.run_daily_workflow",
+                side_effect=RuntimeError("private connection details"),
+            ),
+            self.assertLogs("scheduler", level="ERROR") as captured,
+        ):
+            scheduler.run_scheduled_workflow()
+
+        self.assertIn("failed unexpectedly (RuntimeError)", captured.output[0])
+        self.assertNotIn("private connection details", captured.output[0])
 
     def test_rejects_invalid_schedule_time(self):
         with patch.object(scheduler.config, "NEWS_SCHEDULE_HOUR", 24):

@@ -147,6 +147,67 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn("secret", response.text)
         self.assertNotIn("private-host", response.text)
 
+    def test_lifespan_prepares_database_and_starts_then_stops_scheduler(self):
+        startup_calls = []
+        scheduler = MagicMock()
+        scheduler.running = True
+        scheduler.start.side_effect = lambda: startup_calls.append("start")
+
+        with (
+            patch(
+                "api.prepare_collections",
+                side_effect=lambda: startup_calls.append("prepare"),
+            ) as prepare,
+            patch("api.create_api_scheduler", return_value=scheduler) as create,
+            TestClient(api.app) as client,
+        ):
+            prepare.assert_called_once_with()
+            create.assert_called_once_with()
+            scheduler.start.assert_called_once_with()
+            self.assertEqual(startup_calls, ["prepare", "start"])
+            scheduler.shutdown.assert_not_called()
+            self.assertEqual(client.get("/health").status_code, 200)
+
+        scheduler.shutdown.assert_called_once_with(wait=False)
+        self.assertIsNone(getattr(api.app.state, "scheduler", None))
+        self.assertFalse(api.app.state.scheduler_starting)
+
+    def test_lifespan_rejects_duplicate_scheduler_start(self):
+        scheduler = MagicMock()
+        scheduler.running = True
+
+        with (
+            patch("api.prepare_collections"),
+            patch("api.create_api_scheduler", return_value=scheduler) as create,
+            TestClient(api.app),
+        ):
+            with self.assertRaises(RuntimeError):
+                with TestClient(api.app):
+                    pass
+
+        create.assert_called_once_with()
+        scheduler.start.assert_called_once_with()
+        scheduler.shutdown.assert_called_once_with(wait=False)
+
+    def test_lifespan_cleans_up_scheduler_when_startup_fails(self):
+        scheduler = MagicMock()
+        scheduler.running = True
+        scheduler.start.side_effect = RuntimeError("private startup details")
+
+        with (
+            patch("api.prepare_collections"),
+            patch("api.create_api_scheduler", return_value=scheduler),
+            self.assertLogs("api", level="ERROR") as captured,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "private startup details"):
+                with TestClient(api.app):
+                    pass
+
+        scheduler.shutdown.assert_called_once_with(wait=False)
+        self.assertIsNone(getattr(api.app.state, "scheduler", None))
+        self.assertFalse(api.app.state.scheduler_starting)
+        self.assertNotIn("private startup details", captured.output[0])
+
 
 if __name__ == "__main__":
     unittest.main()

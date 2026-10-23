@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7fa">
+    <meta
+      name="description"
+      content="Explore global technology news and daily briefings with TechPulse."
+    >
+    <title>TechPulse — Your daily guide to global technology</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="/style.css">
+    <script src="/script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#dashboard" aria-label="TechPulse home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none">
+              <rect x="2" y="2" width="36" height="36" rx="12" fill="currentColor"/>
+              <path d="M9 21h6l3-8 5 15 3-7h5" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <span class="brand-name">TechPulse</span>
+            <span class="brand-tagline">Your daily guide to global technology</span>
+          </span>
+        </a>
+
+        <button
+          class="menu-toggle"
+          id="menu-toggle"
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded="false"
+          aria-controls="primary-navigation"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+
+        <nav class="primary-navigation" id="primary-navigation" aria-label="Main navigation">
+          <a class="nav-link is-active" href="#dashboard">Dashboard</a>
+          <a class="nav-link" href="#latest-news">Latest News</a>
+          <a class="nav-link" href="#daily-briefing">Daily Briefing</a>
+          <a class="nav-link" href="#about">About</a>
+        </nav>
+
+        <button class="connection-pill is-checking" id="connection-status" type="button">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connection-label">Checking connection</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero-section page-shell" id="dashboard" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-line"></span> Your daily technology briefing</p>
+          <h1 id="hero-title">Understand the technology shaping <span>tomorrow.</span></h1>
+          <p class="hero-description">
+            Explore important global technology news, understand why it matters,
+            and discover what to learn next.
+          </p>
+          <a class="button button-primary" href="#latest-news">
+            Explore Today's News
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M4 10h12m-5-5 5 5-5 5" />
+            </svg>
+          </a>
+          <p class="hero-note">Clear context for a fast-moving technology world.</p>
+        </div>
+
+        <aside class="hero-card" aria-label="Daily briefing preview">
+          <div class="hero-card-top">
+            <span class="hero-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>
+                <path d="M8 7h8M8 11h8"/>
+              </svg>
+            </span>
+            <span class="hero-card-label">THE DAILY BRIEFING</span>
+          </div>
+          <p class="hero-card-date" id="hero-briefing-date">Checking for the latest edition…</p>
+          <h2 id="hero-briefing-title">A little more context. A lot less noise.</h2>
+          <p class="hero-card-description" id="hero-briefing-summary">
+            Your latest saved briefing will appear here when one is available.
+          </p>
+          <a class="text-link" href="#daily-briefing">
+            Read the briefing
+            <span aria-hidden="true">→</span>
+          </a>
+          <span class="hero-card-decoration" aria-hidden="true"></span>
+        </aside>
+      </section>
+
+      <section class="overview-section page-shell" aria-label="Project overview">
+        <div class="overview-card">
+          <span class="overview-icon icon-blue" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z"/>
+              <path d="M8 8h8M8 12h8M8 16h5"/>
+            </svg>
+          </span>
+          <div>
+            <p class="overview-label">Articles in store</p>
+            <p class="overview-value" id="article-count">Loading…</p>
+          </div>
+        </div>
+        <div class="overview-card">
+          <span class="overview-icon icon-violet" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"/>
+              <path d="m4 7 8 4 8-4M12 11v10"/>
+            </svg>
+          </span>
+          <div>
+            <p class="overview-label">Topics to explore</p>
+            <p class="overview-value">9 categories</p>
+          </div>
+        </div>
+        <div class="overview-card">
+          <span class="overview-icon icon-amber" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="5" width="18" height="16" rx="2"/>
+              <path d="M16 3v4M8 3v4M3 10h18"/>
+            </svg>
+          </span>
+          <div>
+            <p class="overview-label">Latest briefing</p>
+            <p class="overview-value overview-value-date" id="latest-briefing-date">Loading…</p>
+          </div>
+        </div>
+        <button class="overview-card overview-status-card" id="overview-connection" type="button">
+          <span class="overview-icon icon-green" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12.5 9.5 17 19 7.5"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+          </span>
+          <span>
+            <span class="overview-label">Backend status</span>
+            <span class="overview-value" id="overview-status-label">Checking…</span>
+          </span>
+          <span class="overview-refresh">Check</span>
+        </button>
+      </section>
+
+      <section class="content-section page-shell" id="latest-news" aria-labelledby="news-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">STAY INFORMED</p>
+            <h2 id="news-title">The latest in technology</h2>
+            <p class="section-description">
+              Explore the stories shaping industries, ideas, and what comes next.
+            </p>
+          </div>
+          <form class="search-form" id="search-form" role="search">
+            <label class="visually-hidden" for="search-input">Search news by keyword</label>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/>
+              <path d="m20 20-4-4"/>
+            </svg>
+            <input
+              id="search-input"
+              name="keyword"
+              type="search"
+              maxlength="100"
+              placeholder="Search technology news"
+              autocomplete="off"
+            >
+            <button type="submit">Search</button>
+          </form>
+        </div>
+
+        <div class="category-filter-wrap">
+          <div class="category-filter-heading">
+            <h3>Explore by topic</h3>
+            <p>Choose a category to focus your news feed.</p>
+          </div>
+          <div class="category-filters" id="category-filters" aria-label="Filter news by category">
+            <button class="category-chip is-active" type="button" data-category="">All News</button>
+          </div>
+        </div>
+
+        <div class="feed-toolbar">
+          <div>
+            <h3 id="feed-heading">Latest stories</h3>
+            <p id="feed-context">Fresh perspectives from the technology world.</p>
+          </div>
+          <span class="result-count" id="result-count" aria-live="polite"></span>
+        </div>
+
+        <div class="feed-message" id="news-message" role="status" aria-live="polite" hidden></div>
+        <div class="news-grid" id="news-grid" aria-live="polite" aria-busy="false"></div>
+        <div class="load-more-wrap" id="load-more-wrap" hidden>
+          <button class="button button-secondary" id="load-more" type="button">
+            Load more stories
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 4v12m-5-5 5 5 5-5"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <section class="briefing-section" id="daily-briefing" aria-labelledby="briefing-title">
+        <div class="page-shell">
+          <div class="section-heading briefing-heading">
+            <div>
+              <p class="eyebrow">A CLEARER PICTURE</p>
+              <h2 id="briefing-title">Your daily briefing</h2>
+              <p class="section-description">
+                A thoughtful read of the stories already saved by the daily news workflow.
+              </p>
+            </div>
+            <span class="briefing-date-badge" id="briefing-date-badge">Latest edition</span>
+          </div>
+          <div class="briefing-message" id="briefing-message" role="status" aria-live="polite">
+            <span class="loading-spinner" aria-hidden="true"></span>
+            <span>Looking for the latest daily briefing…</span>
+          </div>
+          <article class="briefing-paper" id="briefing-content" hidden></article>
+        </div>
+      </section>
+
+      <section class="how-section page-shell" id="about" aria-labelledby="how-title">
+        <div class="how-intro">
+          <p class="eyebrow">A SIMPLE WAY TO STAY CURIOUS</p>
+          <h2 id="how-title">How to use TechPulse</h2>
+          <p>
+            Go from a headline to a clearer understanding in just a few steps.
+          </p>
+        </div>
+        <ol class="how-steps">
+          <li>
+            <span class="step-number">01</span>
+            <div>
+              <h3>Check the connection</h3>
+              <p>Make sure the backend is running and the status shows Connected.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">02</span>
+            <div>
+              <h3>Choose a topic</h3>
+              <p>Select a technology category or search for a keyword.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">03</span>
+            <div>
+              <h3>Explore the news</h3>
+              <p>Read headlines, available summaries, publication details, and source links.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-number">04</span>
+            <div>
+              <h3>Read the daily briefing</h3>
+              <p>Review saved developments and the learning and career suggestions they include.</p>
+            </div>
+          </li>
+        </ol>
+        <aside class="briefing-explainer">
+          <span class="explainer-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.64 5.64l1.42 1.42m9.88 9.88 1.42 1.42m0-12.72-1.42 1.42m-9.88 9.88-1.42 1.42"/>
+              <circle cx="12" cy="12" r="5"/>
+            </svg>
+          </span>
+          <div>
+            <h3>What is a daily briefing?</h3>
+            <p>
+              It groups selected, already-stored articles by category and shows their saved
+              summaries and generated suggestions. Unlike browsing headlines alone, it offers
+              a little more context—without claiming to replace the original reporting.
+            </p>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner page-shell">
+        <div>
+          <a class="footer-brand" href="#dashboard">TechPulse</a>
+          <p>Your daily guide to global technology.</p>
+          <p class="footer-project-note">A student project for exploring technology news with context.</p>
+        </div>
+        <div class="footer-links">
+          <a href="#latest-news">Latest News</a>
+          <a href="#daily-briefing">Daily Briefing</a>
+          <a href="/docs" target="_blank" rel="noopener noreferrer">API documentation</a>
+        </div>
+        <p class="footer-disclosure">
+          Article links open their original publishers. Summaries and suggestions are shown
+          only when provided by the project backend.
+        </p>
+      </div>
+    </footer>
+
+    <dialog class="article-dialog" id="article-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-header">
+        <span class="eyebrow">ARTICLE DETAILS</span>
+        <button class="dialog-close" id="dialog-close" type="button" aria-label="Close article details">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-content" id="dialog-content">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <p>Loading article details…</p>
+      </div>
+    </dialog>
+    <div class="visually-hidden" id="announcer" aria-live="assertive"></div>
+  </body>
+</html>

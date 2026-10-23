@@ -1,234 +1,218 @@
-# Daily-Global-Tech-News-Scheduler
+# Daily Global Tech News Scheduler
 
-## Objective
+A beginner-friendly Python project that collects technology news once a day, categorizes and scores the articles, stores them in MongoDB, creates a daily briefing, and provides read-only REST API endpoints to browse the stored information.
 
-Collect global technology news each day, categorize and store it in MongoDB, create daily briefings, and make the information available through REST APIs.
+## Features
 
-## Technology Stack
+- Fetches recent technology articles from NewsAPI.org.
+- Validates article titles and URLs, assigns a category, and calculates a simple importance score.
+- Stores articles and daily briefings in MongoDB.
+- Prevents duplicate article URLs and duplicate briefing dates with MongoDB unique indexes.
+- Runs the workflow on a configurable daily schedule.
+- Provides REST endpoints and interactive Swagger documentation.
+- Includes automated tests that use mocks for NewsAPI and MongoDB operations.
 
-Python, MongoDB, Requests, PyMongo, python-dotenv, APScheduler, FastAPI, and Uvicorn.
+## Technology and Simple Architecture
 
-## Environment Setup
+- **Python** runs the application code.
+- **Requests** calls the NewsAPI.org endpoint.
+- **PyMongo** connects to MongoDB Community Server.
+- **python-dotenv** reads local settings from `.env`.
+- **APScheduler** triggers the daily workflow.
+- **FastAPI** provides the read-only REST API and application lifespan.
+- **Uvicorn** serves the FastAPI application.
+- **Postman** can be used to send and inspect API requests.
 
-Create and activate the virtual environment in PowerShell:
+The main modules work together as follows:
+
+1. `config.py` loads settings from `.env`.
+2. `news_service.py` fetches and normalizes article data from NewsAPI.org.
+3. `news_storage.py` validates articles, categorizes and scores them, and inserts them into MongoDB.
+4. `briefing_service.py` selects stored articles and creates a briefing for the schedule's current date.
+5. `scheduler.py` registers the configured daily job and calls the fetch, storage, and briefing workflow.
+6. `api.py` exposes read-only endpoints and starts/stops an APScheduler instance using FastAPI's lifespan.
+7. `database.py` reuses the MongoDB client, checks connectivity, and prepares collections and indexes.
+
+The normal workflow is **fetch news → validate articles → categorize and score → store articles → generate and store the daily briefing**. If fetching or saving fails, later workflow steps are not run. Briefing suggestions are labeled as generated suggestions rather than reported facts or real job listings.
+
+## Prerequisites
+
+- Windows with PowerShell (commands below use PowerShell syntax).
+- Python installed and available as `python`.
+- MongoDB Community Server installed and running locally, or access to a MongoDB server whose URI you are allowed to use.
+- A NewsAPI.org API key for live scheduled fetching.
+- Internet access for dependency installation and the NewsAPI request.
+
+## Fresh Clone Setup
+
+Open PowerShell in the cloned project folder. Create and activate a virtual environment, then install dependencies:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-Install the project dependencies:
-
-```powershell
 python -m pip install -r requirements.txt
 ```
 
-## Environment Configuration
-
-The local `.env` file contains MongoDB, news provider, schedule, and fetch-limit settings. It is ignored by Git. Use `.env.example` as the safe template, and keep your API key only in `.env`. `config.py` loads these values with beginner-friendly defaults.
-
-## Step 3: MongoDB Connection
-
-`database.py` reuses a PyMongo client, checks the server with `ping`, and prepares the `news` and `daily_briefings` collections. It adds unique indexes to `news.url` and `daily_briefings.briefing_date`. The database test checks these indexes without inserting news or briefing documents.
-
-Make sure the local MongoDB Community Server is running, activate `.venv`, then run:
+Copy the safe template to a local environment file:
 
 ```powershell
-python .\test_database.py
+Copy-Item .env.example .env
 ```
 
-A successful test prints the ping status, database name, collections, and unique indexes. If it fails, check the MongoDB service and port `27017`, then review the `MONGODB_URI` and database permissions in `.env`.
+Edit `.env` using a text editor. Set the NewsAPI key and confirm the MongoDB URI and schedule settings. Do not commit `.env`, paste its contents into issues or chat, or print the key in logs. `.env` and `.venv/` are excluded by `.gitignore`; `.env.example` is the safe, tracked template.
 
-## Project Status
+## MongoDB Setup
 
-Step 2, environment and configuration, is complete. The virtual environment, dependency installation, and configuration defaults were verified successfully. Step 3, MongoDB connection and index setup, is complete; `python .\test_database.py` passed against the local MongoDB server.
+Start MongoDB Community Server and make sure it is listening at the URI in `.env` (the default is `mongodb://localhost:27017/`). You do not need to create the database or collections manually. At API startup, the application pings MongoDB and prepares the existing `news` and `daily_briefings` collections, including unique indexes on `news.url` and `daily_briefings.briefing_date`.
 
-## Step 4: Fetch Technology News
+The API will not finish starting if MongoDB cannot be reached or the required indexes cannot be prepared. Check the MongoDB service, URI, and database permissions if startup fails.
 
-This step uses [NewsAPI.org](https://newsapi.org/docs) and its Everything endpoint. Copy `.env.example` to `.env` if needed, then set `NEWS_API_KEY` to the key from your NewsAPI account and `NEWS_API_BASE_URL` to `https://newsapi.org/v2`. Keep the key private; do not paste it into source code or share it in chat. `NEWS_FETCH_LIMIT` controls the result count and must be between 1 and 100.
-
-`news_service.py` sends a GET request to `/everything`, passes `technology` as the search term, and puts the key in the `X-Api-Key` request header. Requests time out after 10 seconds by default; callers can choose a different timeout. The function returns normalized article dictionaries and does not write to MongoDB.
-
-A REST API lets one program ask another for information using web requests. An HTTP request is the message sent to the service; an HTTP response is its reply. A JSON response is structured text that Python can turn into dictionaries and lists. An API key identifies the application making the request. HTTP status codes summarize the result: `200` means success, `401` commonly indicates an authentication problem, and `429` means the service is limiting requests. A timeout puts a limit on how long the program waits before reporting that the service did not respond in time.
-
-Run the mocked tests from PowerShell with the existing virtual environment:
+Optional database check (this connects to the configured database and creates/verifies its indexes; it does not insert news or briefing documents):
 
 ```powershell
-.\.venv\Scripts\python.exe .\test_news_service.py
+.\.venv\Scripts\python.exe .\test_database.py
 ```
 
-Expected result:
+## NewsAPI Configuration
+
+Create or access your NewsAPI.org account and copy its API key to the `NEWS_API_KEY` setting in `.env`. The configured base URL should be `https://newsapi.org/v2`. Keep the key private. The application sends it to the provider in the `X-Api-Key` request header and does not include it in application logs.
+
+## Environment Variables
+
+| Variable | Purpose | Example/default |
+| --- | --- | --- |
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/` |
+| `DATABASE_NAME` | Database used by the application | `tech_news` |
+| `NEWS_API_KEY` | Private NewsAPI.org key | Set in `.env`; blank by default |
+| `NEWS_API_BASE_URL` | NewsAPI.org API base URL | `https://newsapi.org/v2` in `.env.example`; code default is blank |
+| `NEWS_SCHEDULE_HOUR` | Daily schedule hour, 0–23 | `6` |
+| `NEWS_SCHEDULE_MINUTE` | Daily schedule minute, 0–59 | `0` |
+| `NEWS_SCHEDULE_TIMEZONE` | IANA time-zone name for schedule and briefing date | `Asia/Kolkata` |
+| `NEWS_FETCH_LIMIT` | Maximum requested articles per fetch, 1–100 | `100` |
+
+`config.py` loads local values from `.env` and provides defaults. Ensure the schedule hour and minute are valid integers, the fetch limit is between 1 and 100, and the time zone is a valid IANA name.
+
+## Start the API
+
+Make sure MongoDB is running and `.env` has the needed values. From the project root, run the project’s API command:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api:app --reload
+```
+
+The `--reload` option is useful during local development; Uvicorn reloads when source files change. The FastAPI application is `app` in `api.py` (not `main.py`). Use a single worker for this in-process scheduler. Multiple worker processes each create their own scheduler and could run the daily job more than once.
+
+Open Swagger UI in a browser:
 
 ```text
-........
-----------------------------------------------------------------------
-Ran 8 tests in ...s
-
-OK
+http://127.0.0.1:8000/docs
 ```
 
-These tests replace the HTTP request with mocked responses. They do not use your API key or contact NewsAPI.org, so passing them is not a live API verification. No Step 4 command is provided for live fetching; this stage only validates the fetch service with safe mocked tests.
-
-## Step 5: Categorize and Save News
-
-`news_storage.py` categorizes each article by matching keywords in its title and description, validates the required title and URL, calculates a transparent importance score, and inserts valid articles into MongoDB's `news` collection. The categories are Artificial Intelligence, Agentic AI, Quantum Computing, Cloud Computing, Software Architecture, Cybersecurity, Programming and Developer Tools, Startups and Tech Business, and Global Tech Companies and Trends. When several keyword groups match, the first matching category in the list in `news_storage.py` is selected. Articles without a category keyword get `category: None`.
-
-The score is a simple indicator, not an objective measure of truth: categorized articles receive 40 relevance points (uncategorized articles receive 15), up to 30 points for headline signals, and up to 30 points for recency (within one day, seven days, or 30 days). Invalid or future publication dates earn no recency points. Each saved article also gets a UTC `fetched_at` timestamp. Invalid titles or URLs are rejected. URLs must use HTTP or HTTPS and include a host.
-
-MongoDB's existing unique index on `news.url` prevents storing the same URL twice. Duplicate URLs in a batch are skipped, and MongoDB duplicate-key errors are counted rather than raised. The function reports the numbers inserted, duplicated, and rejected; it does not delete or update existing records.
-
-Run the Step 5 tests from PowerShell with the existing virtual environment:
-
-```powershell
-.\.venv\Scripts\python.exe .\test_news_storage.py
-```
-
-Expected result:
+The TechPulse browser dashboard is served by the same FastAPI application at:
 
 ```text
-..........
-----------------------------------------------------------------------
-Ran 10 tests in ...s
-
-OK
+http://127.0.0.1:8000/
 ```
 
-The tests pass a mocked collection to the save function, so they do not write to MongoDB. To run the Step 4 and Step 5 tests together, use:
+The static files are in `frontend/`. Open the dashboard through this URL rather than opening `frontend/index.html` directly or using a separate development server. Serving the page from FastAPI keeps frontend requests on the same origin as the API, so this local setup does not need CORS configuration. The dashboard uses the current browser origin as its API base URL.
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest .\test_news_service.py .\test_news_storage.py
-```
+Stop the server with `Ctrl+C`. FastAPI's lifespan handles scheduler shutdown.
 
-The combined run should report 18 tests and `OK`.
+## TechPulse Dashboard
 
-## Step 6: Generate the Daily Briefing
+The plain HTML, CSS, and JavaScript dashboard calls the existing API routes; it does not add or simulate backend capabilities. It shows the real article total, configured topic filters, backend health state, saved briefings, news fields, and article details when the corresponding responses contain them. Category filtering calls `/news/category/{category}`, keyword search calls `/news/search?keyword=...`, and the briefing is loaded from `/briefings` and `/briefings/{date}`. Article details use `/news/{article_id}`.
 
-A daily briefing is a date-specific digest built from articles already stored in MongoDB. `briefing_service.py` sorts stored articles by importance score and publication date, then selects from categories in rounds so lower-ranked categories can be represented when the article limit allows. It groups the selected articles by category and includes title, URL, source, publication date, and a short extractive summary. When an article has no description, the briefing says the available description is limited instead of making up a summary.
+The nine topic filters match the category names defined in `news_storage.py`. Search and category selection are separate API filters; choosing a category clears the keyword search. The briefing view uses the stored `news`, `summary`, `why_it_matters`, `learning_of_the_day`, and `career_opportunity` fields when present. Learning and career entries are labeled as generated suggestions, not reported facts or job listings. Publisher links open in a new tab.
 
-The "why it matters" text, Learning of the Day, and Career Opportunity are labeled generated suggestions rather than facts reported by articles or job listings. No paid AI service is used. If there are no stored articles, the briefing contains an empty news mapping and says that no suggestions could be generated.
+If the API is unavailable, the page does not mark itself Connected and displays a retry option where data failed to load. The project does not currently provide a category-list endpoint; the dashboard's filter choices correspond to categories supported by the current backend code.
 
-Briefings use a UTC date string (`YYYY-MM-DD`) and the existing unique index on `daily_briefings.briefing_date`. The first briefing for a date is preserved on reruns; it is not replaced. If two runs race to create the same date, the one that encounters a duplicate-key error loads the already-saved briefing. MongoDB `ObjectId` and datetime values are converted to strings in the returned result for JSON serialization, while MongoDB stores its native values.
+## API Endpoints
 
-Run the Step 6 tests from PowerShell using the existing virtual environment:
+All endpoints are read-only. List responses have the shape `{"items": [...], "skip": 0, "limit": 20, "total": 0}`. MongoDB ObjectIds and Python dates/datetimes are returned as strings.
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest test_briefing_service
-```
-
-Expected output:
-
-```text
-......
-----------------------------------------------------------------------
-Ran 6 tests in ...s
-
-OK
-```
-
-Run all mocked API, storage, and briefing tests together:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest test_news_service test_news_storage test_briefing_service
-```
-
-The combined run should report 24 tests and `OK`. Tests use mocked collections and do not call NewsAPI or modify real database records.
-
-## Step 7: Daily Scheduling
-
-APScheduler runs Python functions on a timer. A scheduled job is the function APScheduler runs; a cron-style schedule describes calendar times such as every day at a chosen hour and minute. A time zone tells the scheduler which local clock those numbers refer to, independently of the computer's configured time zone.
-
-The daily job runs `fetch_technology_news()`, then `save_articles(articles)`, and finally `generate_daily_briefing(briefing_date=...)` for the current date in the configured schedule time zone. The defaults are `NEWS_SCHEDULE_HOUR=6`, `NEWS_SCHEDULE_MINUTE=0`, and `NEWS_SCHEDULE_TIMEZONE=Asia/Kolkata` (Indian Standard Time). This is an explicit default, not an assumption about the server. Set the time-zone setting to another valid IANA name, such as `America/New_York`, if that is the intended schedule. Both the hour/minute and time-zone values are loaded from `.env` by `config.py`.
-
-Start the scheduler from the project root with the existing virtual environment:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python .\scheduler.py
-```
-
-The scheduler uses one `BlockingScheduler` job, permits only one running instance of that job, coalesces missed runs into at most one run, and allows a missed run to start up to one hour late. Importing `scheduler.py` does not start it. The scheduler runs only while this Python process and its computer/server remain running; it does not run while the computer is off or the process is stopped.
-
-To safely verify workflow order without waiting for the scheduled time, making a network request, or writing to MongoDB, run:
-
-```powershell
-python .\scheduler.py --test
-```
-
-Expected output includes:
-
-```text
-INFO scheduler: Scheduler test mode passed: fetch -> save -> briefing. No network request or database write was made.
-```
-
-Run the automated scheduler tests:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest test_scheduler
-```
-
-Expected result:
-
-```text
-........
-----------------------------------------------------------------------
-Ran 8 tests in ...s
-
-OK
-```
-
-Run all mocked tests for Steps 4–7:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest test_news_service test_news_storage test_briefing_service test_scheduler
-```
-
-The combined run should report 32 tests and `OK`.
-
-## Step 8: FastAPI REST API
-
-The API is read-only and uses the existing `database.connect_to_mongodb()` helper. Start it from the project root with the existing virtual environment:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m uvicorn api:app --reload
-```
-
-Open Swagger UI at `http://127.0.0.1:8000/docs`. In Postman, send GET requests to the endpoints below (no request body is needed):
-
-| Endpoint | Purpose |
+| Method and path | Purpose |
 | --- | --- |
-| `GET /health` | Safely report application and MongoDB connection status |
-| `GET /news?skip=0&limit=20` | List news with pagination (`limit` is 1–100) |
-| `GET /news/{id}` | Get one article by MongoDB ObjectId |
-| `GET /news/category/{category}` | List news with an exact category label |
-| `GET /news/search?keyword=python` | Case-insensitive literal search in titles and descriptions |
-| `GET /briefings?skip=0&limit=20` | List briefings with pagination |
-| `GET /briefings/YYYY-MM-DD` | Get a briefing by its `YYYY-MM-DD` date |
+| `GET /health` | Check API availability and MongoDB connectivity |
+| `GET /news?skip=0&limit=20` | List articles; `limit` is 1–100 |
+| `GET /news/{article_id}` | Get one article by MongoDB ObjectId |
+| `GET /news/category/{category}` | List articles with an exact category |
+| `GET /news/search?keyword=python` | Search titles/descriptions with a case-insensitive literal keyword |
+| `GET /briefings?skip=0&limit=20` | List stored briefings |
+| `GET /briefings/YYYY-MM-DD` | Get one briefing by date |
 
-For example, request `http://127.0.0.1:8000/news/search?keyword=python` in Postman. A list response has `items`, `skip`, `limit`, and `total`. MongoDB ObjectIds and Python dates/datetimes are returned as strings so the response is valid JSON. Invalid pagination/search values are rejected with HTTP `422`; malformed IDs and dates return `400`; valid but missing records return `404`; unavailable database operations return a safe `503` response. Search terms are treated as literal text, not regular expressions.
+In Postman, choose **GET**, enter an endpoint such as `http://127.0.0.1:8000/news?skip=0&limit=20`, and send the request. For category labels with spaces, URL-encode the spaces or select the endpoint in Swagger UI. No request body or authentication is required by these project endpoints.
 
-Run API tests with mocked database operations:
+Invalid query values generally return `422`; malformed IDs or dates return `400`; a valid but missing record returns `404`; database operation failures return a safe `503` response. The health endpoint returns `{"status":"ok","database":"connected"}` when its MongoDB ping succeeds.
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest test_api
-```
+## Daily Scheduler Behavior
 
-Expected output:
+The scheduler starts and stops with the FastAPI application lifespan. During startup it prepares the MongoDB collections and indexes, then starts an `AsyncIOScheduler`. It uses `NEWS_SCHEDULE_HOUR`, `NEWS_SCHEDULE_MINUTE`, and `NEWS_SCHEDULE_TIMEZONE`; the template sets 06:00 in `Asia/Kolkata` (Indian Standard Time). This explicit time zone is used instead of assuming the computer's local time. Change the setting to another valid IANA name if appropriate.
 
-```text
-..........
-----------------------------------------------------------------------
-Ran 10 tests in ...s
+The workflow does **not** run immediately at API startup. It waits for the next daily schedule time. Only one instance of the job can run at a time (`max_instances=1`); multiple due executions are coalesced, and an execution delayed by up to one hour is allowed. The scheduler is in memory, not a persistent job store. Runs missed while the API process is stopped are skipped rather than replayed after restart.
 
-OK
-```
-
-Run the mocked tests from Steps 4–8 together:
+The standalone command `python .\scheduler.py` also runs a blocking scheduler independently of FastAPI. Avoid running it at the same time as the API scheduler, or the same work may run twice. To check workflow ordering safely without calling NewsAPI or writing to MongoDB, run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest test_news_service test_news_storage test_briefing_service test_scheduler test_api
+.\.venv\Scripts\python.exe .\scheduler.py --test
 ```
 
-The combined run should report 42 tests and `OK`. These tests do not call the news provider or require live MongoDB. The API does not start or integrate the scheduler.
+## Automated Tests
 
-The next step can integrate the scheduler with application startup safely.
+Run the complete automated suite from the project root when ready:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -v
+```
+
+The news-fetch and storage tests use mocks; API lifecycle and endpoint tests mock database and scheduler setup; briefing tests use mocked collections. The standalone database check is a separate command and uses the configured MongoDB server. Test results are not a substitute for a manual live API/NewsAPI check.
+
+## Common Errors and Troubleshooting
+
+- **MongoDB connection or startup failure:** Start MongoDB Community Server and verify `MONGODB_URI`, network access, and credentials. Startup deliberately fails if it cannot ping MongoDB and prepare indexes.
+- **Index creation failure:** Confirm the database user can create indexes. If the collections already contain duplicate article URLs or briefing dates, resolve those duplicates before creating unique indexes.
+- **NewsAPI key missing or rejected:** Set `NEWS_API_KEY` in `.env`, verify it is current, and check the provider account and service status. Never include the key in a bug report.
+- **NewsAPI network or rate-limit error:** Check internet access and provider status/limits. The job reports safe error information and retries at a later scheduled run; it does not retry continuously.
+- **No articles or briefing visible:** The job runs at its configured time, not immediately on startup. Verify the time zone, wait for the next run, then inspect `/news` and `/briefings`. An empty provider result may produce a briefing without news.
+- **`Address already in use`:** Another process is using port `8000`. Stop that process or choose another Uvicorn port, such as `--port 8001`.
+- **`ModuleNotFoundError`:** Activate `.venv` and run `python -m pip install -r requirements.txt` again.
+- **API returns `503`:** Check MongoDB availability and the application log. API error responses avoid returning database connection details.
+- **Duplicate records are skipped:** Repeated URLs are counted as duplicates, and unique indexes protect the database. Existing records are not updated.
+
+## Manual End-of-Project Testing Checklist
+
+- [ ] Install the dependencies in a fresh `.venv` and configure a private `.env`.
+- [ ] Start MongoDB and confirm the standalone database/index check succeeds.
+- [ ] Start the app using `.\.venv\Scripts\python.exe -m uvicorn api:app --reload`.
+- [ ] Open `http://127.0.0.1:8000/` and confirm the TechPulse dashboard loads from the FastAPI server.
+- [ ] Open `/docs` and call `/health`; confirm it reports a connected database.
+- [ ] Confirm the connection badge changes to Connected only after a successful health response.
+- [ ] Search by keyword, select a category, load more stories, open an article details dialog, and follow an original publisher link.
+- [ ] Review the latest briefing and confirm only saved briefing fields are displayed.
+- [ ] Call `/news`, `/news/search`, `/news/category/{category}`, `/news/{article_id}`, `/briefings`, and `/briefings/{YYYY-MM-DD}` using valid and invalid values.
+- [ ] Confirm invalid values return expected errors and responses do not reveal credentials.
+- [ ] Verify the configured schedule hour, minute, and IANA time zone; do not expect a workflow run immediately on startup.
+- [ ] After the next scheduled run, inspect the stored articles and briefing; confirm article URLs/categories/scores and the briefing date/content.
+- [ ] Stop the server with `Ctrl+C` and confirm shutdown completes cleanly.
+- [ ] Run the automated suite shown above, then review `git status` to make sure `.env` and `.venv` are not staged.
+
+## Beginner Viva / Interview Questions
+
+1. **What does this project do?**
+
+   It fetches technology news each day, validates and categorizes the articles, stores them in MongoDB, creates a briefing, and provides read-only API endpoints.
+
+2. **What is FastAPI lifespan used for?**
+
+   Lifespan runs setup when the API starts and cleanup when it stops. Here it prepares MongoDB and starts and shuts down the scheduler.
+
+3. **How does APScheduler know when to run the workflow?**
+
+   A cron-style daily trigger uses the configured hour, minute, and IANA time zone.
+
+4. **How are duplicate articles prevented?**
+
+   The application skips repeated URLs within one batch, and MongoDB's unique index on `news.url` prevents the same URL being stored again.
+
+5. **What happens when the API is stopped at the scheduled time?**
+
+   The scheduler is in memory, so a run missed while the process is stopped is skipped. It waits for the next scheduled time after restart.

@@ -4,10 +4,13 @@ import argparse
 import logging
 from collections.abc import Callable
 from datetime import date, datetime
-from typing import Any
+from typing import Any, TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
+from apscheduler.events import EVENT_JOB_ERROR, JobExecutionEvent
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pymongo.errors import PyMongoError
@@ -24,6 +27,7 @@ Article = dict[str, str | None]
 Fetcher = Callable[[], list[Article]]
 Saver = Callable[[list[Article]], dict[str, int]]
 BriefingGenerator = Callable[[date], dict[str, Any]]
+SchedulerType = TypeVar("SchedulerType", bound=BaseScheduler)
 
 
 def _configured_timezone() -> ZoneInfo:
@@ -94,6 +98,17 @@ def run_daily_workflow(
     return True
 
 
+def run_scheduled_workflow() -> None:
+    """Run the workflow without exposing unexpected exception details to APScheduler."""
+    try:
+        run_daily_workflow()
+    except Exception as error:
+        logger.error(
+            "Daily news workflow failed unexpectedly (%s).",
+            type(error).__name__,
+        )
+
+
 def run_test_mode() -> bool:
     """Exercise workflow order with in-memory stand-ins and no network or database."""
     calls = []
@@ -137,8 +152,10 @@ def run_test_mode() -> bool:
     return True
 
 
-def create_scheduler() -> BlockingScheduler:
-    """Create (but do not start) the daily blocking scheduler."""
+def _add_daily_job(
+    scheduler: SchedulerType,
+    timezone: ZoneInfo,
+) -> SchedulerType:
     hour = config.NEWS_SCHEDULE_HOUR
     minute = config.NEWS_SCHEDULE_MINUTE
     if not 0 <= hour <= 23:
@@ -146,17 +163,43 @@ def create_scheduler() -> BlockingScheduler:
     if not 0 <= minute <= 59:
         raise ValueError("NEWS_SCHEDULE_MINUTE must be between 0 and 59.")
 
-    timezone = _configured_timezone()
-    scheduler = BlockingScheduler(timezone=timezone)
     trigger = CronTrigger(hour=hour, minute=minute, timezone=timezone)
     scheduler.add_job(
-        run_daily_workflow,
+        run_scheduled_workflow,
         trigger=trigger,
         id="daily_tech_news_workflow",
         max_instances=1,
         coalesce=True,
         misfire_grace_time=60 * 60,
     )
+    return scheduler
+
+
+def create_scheduler() -> BlockingScheduler:
+    """Create (but do not start) the daily blocking scheduler."""
+    timezone = _configured_timezone()
+    return _add_daily_job(BlockingScheduler(timezone=timezone), timezone)
+
+
+def _log_job_failure(event: JobExecutionEvent) -> None:
+    """Log scheduled-job failures without exposing exception messages."""
+    error_type = (
+        type(event.exception).__name__
+        if event.exception is not None
+        else "unknown"
+    )
+    logger.error(
+        "Scheduled job '%s' failed (%s).",
+        event.job_id,
+        error_type,
+    )
+
+
+def create_api_scheduler() -> AsyncIOScheduler:
+    """Create (but do not start) the scheduler used by FastAPI."""
+    timezone = _configured_timezone()
+    scheduler = _add_daily_job(AsyncIOScheduler(timezone=timezone), timezone)
+    scheduler.add_listener(_log_job_failure, EVENT_JOB_ERROR)
     return scheduler
 
 
